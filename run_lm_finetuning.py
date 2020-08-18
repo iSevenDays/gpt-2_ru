@@ -339,6 +339,7 @@ def train(args, train_dataset, model, tokenizer):
                 print("After model.train().")
                 outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                print("loss = outputs[0]")
 
                 if args.n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -351,7 +352,9 @@ def train(args, train_dataset, model, tokenizer):
                 else:
                     loss.backward()
 
+                print("tr_loss += loss.item()")
                 tr_loss += loss.item()
+                print("moving_loss.add(loss.item())")
                 moving_loss.add(loss.item())
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     if args.fp16:
