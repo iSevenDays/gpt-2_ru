@@ -337,7 +337,14 @@ def train(args, train_dataset, model, tokenizer):
                 print("Before model.train().")
                 model.train()
                 print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
-                outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
+                #outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
+                outputs = None
+                if args.mlm:
+                    print("outputs = model(inputs, masked_lm_labels=labels)")
+                    outputs = model(inputs, masked_lm_labels=labels)
+                else:
+                    print("outputs = model(inputs, labels=labels)")
+                    outputs = model(inputs, labels=labels)
                 print("loss = outputs[0]")
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
                 print("if args.n_gpu > 1:")
