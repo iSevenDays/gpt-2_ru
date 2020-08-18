@@ -334,6 +334,7 @@ def train(args, train_dataset, model, tokenizer):
                 inputs, labels = mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
                 inputs = inputs.to(args.device)
                 labels = labels.to(args.device)
+                print("Before model.train().")
                 model.train()
                 outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
