@@ -336,10 +336,11 @@ def train(args, train_dataset, model, tokenizer):
                 labels = labels.to(args.device)
                 print("Before model.train().")
                 model.train()
-                print("After model.train().")
+                print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
                 outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
-                loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
                 print("loss = outputs[0]")
+                loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
+                print("if args.n_gpu > 1:")
 
                 if args.n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
