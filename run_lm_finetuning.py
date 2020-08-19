@@ -339,7 +339,7 @@ def train(args, train_dataset, model, tokenizer):
                 labels = labels.to(args.device)
                 #print("Before model.train().")
                 model.train()
-                if step %5 == 0:
+                if step %100 == 0:
                     clear_output()
                 #print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
                 #outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
