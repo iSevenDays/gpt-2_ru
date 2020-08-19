@@ -334,20 +334,20 @@ def train(args, train_dataset, model, tokenizer):
                 inputs, labels = mask_tokens(batch, tokenizer, args) if args.mlm else (batch, batch)
                 inputs = inputs.to(args.device)
                 labels = labels.to(args.device)
-                print("Before model.train().")
+                #print("Before model.train().")
                 model.train()
-                print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
+                #print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
                 #outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
                 outputs = None
                 if args.mlm:
-                    print("outputs = model(inputs, masked_lm_labels=labels)")
+                    #print("outputs = model(inputs, masked_lm_labels=labels)")
                     outputs = model(inputs, masked_lm_labels=labels)
                 else:
-                    print("outputs = model(inputs, labels=labels)")
+                    #print("outputs = model(inputs, labels=labels)")
                     outputs = model(inputs, labels=labels)
-                print("loss = outputs[0]")
+                #print("loss = outputs[0]")
                 loss = outputs[0]  # model outputs are always tuple in pytorch-transformers (see doc)
-                print("if args.n_gpu > 1:")
+                #print("if args.n_gpu > 1:")
 
                 if args.n_gpu > 1:
                     loss = loss.mean()  # mean() to average on multi-gpu parallel training
@@ -360,9 +360,9 @@ def train(args, train_dataset, model, tokenizer):
                 else:
                     loss.backward()
 
-                print("tr_loss += loss.item()")
+                #print("tr_loss += loss.item()")
                 tr_loss += loss.item()
-                print("moving_loss.add(loss.item())")
+                #print("moving_loss.add(loss.item())")
                 moving_loss.add(loss.item())
                 if (step + 1) % args.gradient_accumulation_steps == 0:
                     if args.fp16:
