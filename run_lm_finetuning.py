@@ -260,6 +260,8 @@ class SummaryWriterP(SummaryWriter):
                 'runs', current_time + '_' + socket.gethostname() + comment)
         super().__init__(logdir, comment, *args, **kwargs) 
 
+from IPython.display import clear_output
+
 def train(args, train_dataset, model, tokenizer):
     """ Train the model """
     if args.local_rank in [-1, 0]:
@@ -337,6 +339,8 @@ def train(args, train_dataset, model, tokenizer):
                 labels = labels.to(args.device)
                 #print("Before model.train().")
                 model.train()
+                if step %5 == 0:
+                    clear_output()
                 #print("model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)")
                 #outputs = model(inputs, masked_lm_labels=labels) if args.mlm else model(inputs, labels=labels)
                 outputs = None
