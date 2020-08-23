@@ -5,41 +5,59 @@ torch.backends.cudnn.benchmark = True
 from run_generation import sample_sequence
 from yt_encoder import YTEncoder
 from transformers import GPT2LMHeadModel
-import regex as re
+import re
 import argparse
 
-def load_model_and_tokenizer(model_path: str, device: str):
-  tokenizer = YTEncoder.from_pretrained(model_path)
+class ModelEvaluator(object):
+  @staticmethod
+  def _load_tokenizer(path: str):
+    return YTEncoder.from_pretrained(path)
 
-  model = GPT2LMHeadModel.from_pretrained(model_path)
-  model.to(device)
-  model.eval()
-  return (model, tokenizer)
+  @staticmethod
+  def _load_model(path: str, device: str):
+    model = GPT2LMHeadModel.from_pretrained(path)
+    model.to(device)
+    model.eval()
+    return model
 
-def get_sample(model, tokenizer, device, prompt: str, length:int, num_samples:int, temperature: int = 1.0, top_k: int = 0, top_p = 0.9, allow_linebreak:bool = True):
-    filter_n = tokenizer.encode('\n')[-1:]
-    filter_single = [1] + tokenizer.encode('[')[-1:] + tokenizer.encode('(')[-1:]
+  def __init__(self, model_path: str, temperature: int = 1.0, top_k: int = 0, top_p: int = 0.9, device: str = "cpu"):
+    self.tokenizer = self._load_tokenizer(model_path)
+    self.model = self._load_model(model_path, device)
+    self.device = device
+    self.temperature = temperature
+    self.top_k = top_k
+    self.top_p = top_p
+
+  def tokenizer_encode(self, string: str) -> list:
+    return self.tokenizer.encode(string)
+
+  def tokenizer_decode(self, lst: list) -> str:
+    return [self.tokenizer.decode(item) for item in lst]
+
+  def sample(self, prompt: str, length: int, num_samples: int = 1, allow_linebreak:bool = True):
+    filter_n = self.tokenizer.encode('\n')[-1:]
+    filter_single = [1] + self.tokenizer.encode('[')[-1:] + self.tokenizer.encode('(')[-1:]
     filter_single += [] if allow_linebreak else filter_n
 
-    context_tokens = tokenizer.encode(prompt)
+    context_tokens = self.tokenizer.encode(prompt)
     out = sample_sequence(
-        model=model,
+        model=self.model,
         context=context_tokens,
         length=length,
-        temperature=temperature,
-        top_k=top_k,
-        top_p=top_p,
-        device=device,
+        temperature=self.temperature,
+        top_k=self.top_k,
+        top_p=self.top_p,
+        device=self.device,
         filter_single=filter_single,
         filter_double=filter_n,
-        num_samples=num_samples,
+        num_samples=num_samples
     ).to('cpu')
 
-    prompt = tokenizer.decode(context_tokens)
+    prompt = self.tokenizer.decode(context_tokens)
     len_prompt = len(prompt)
    
     replies = [out[item, :].tolist() for item in range(len(out))]
-    text = [tokenizer.decode(item)[len_prompt:] for item in replies]
+    text = [self.tokenizer.decode(item)[len_prompt:] for item in replies]
     reg_text = [re.match(r'[\w\W]*[\.!?]\n', item) for item in text]
     reg_text2 = [re.match(r'[\w\W]*[\.!?]', item) for item in text]
     result = [reg_item[0] if reg_item else reg_item2[0] if reg_item2 else item for reg_item, reg_item2, item in zip(reg_text, reg_text2, text)]
@@ -50,10 +68,10 @@ def print_sample(samples):
       print(sample)
       print(f"-------SAMPLE {index} END-------")
 
-def continuous_run(model, tokenizer, device, args):
+def continuous_run(evaluator: ModelEvaluator, args):
   while True:
     prompt = input("Prompt: ")
-    results = get_sample(model, tokenizer, device, prompt, args.length, args.num_samples, args.temperature, args.top_k, args.top_p, True)
+    results = evaluator.sample(prompt, args.length, args.num_samples, True)
     print_sample(results)
 
 def main():
@@ -67,19 +85,28 @@ def main():
     parser.add_argument("--num_samples", type=int, default=1,
                         help="Number of samples to generate.")
     parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--file", type=str, default="")
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=0.9)
     parser.add_argument("--no_cuda", action='store_true',
                         help="Avoid using CUDA when available")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
+    parser.add_argument('--stop_token', type=int, default=-1,
+                        help="Token on which model sampling stops.")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
-    model, tokenizer = load_model_and_tokenizer(args.model_path, device)
+    evaluator = ModelEvaluator(args.model_path, args.temperature, args.top_k, args.top_p, device)
+
     if args.continuous_run:
-      continuous_run(model, tokenizer, device, args)
+      continuous_run(evaluator, args)
+    if len(args.file) > 0:
+      with open(args.file, "r") as handle:
+        content = handle.read()
+      results = evaluator.sample(content, args.length, args.num_samples, True)
+      print_sample(results)
     else:
-      results = get_sample(model, tokenizer, device, args.prompt, args.length, args.num_samples, args.temperature, args.top_k, args.top_p, True)
+      results = evaluator.sample(args.prompt, args.length, args.num_samples, True)
       print_sample(results)
 
 if __name__ == "__main__":
