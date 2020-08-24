@@ -20,9 +20,13 @@ class ModelEvaluator(object):
     model.eval()
     return model
 
-  def __init__(self, model_path: str, temperature: int = 1.0, top_k: int = 0, top_p: int = 0.9, device: str = "cpu"):
+  def __init__(self, model_path: str, temperature: int = 1.0, top_k: int = 0, top_p: int = 0.9, fp16: bool = False, fp16_opt_level: str = "O2", device: str = "cpu"):
     self.tokenizer = self._load_tokenizer(model_path)
     self.model = self._load_model(model_path, device)
+    print(fp16)
+    if fp16:
+        from apex import amp
+        [self.model] = amp.initialize([self.model], opt_level=fp16_opt_level)
     self.device = device
     self.temperature = temperature
     self.top_k = top_k
@@ -94,10 +98,15 @@ def main():
                         help="random seed for initialization")
     parser.add_argument('--stop_token', type=int, default=-1,
                         help="Token on which model sampling stops.")
+    parser.add_argument('--fp16', action="store_true",
+                        help="Wether use apex fp16 or not.")
+    parser.add_argument('--fp16_opt_level', type=str, default="O2",
+                        help="Apex fp16 optimization level")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
-    evaluator = ModelEvaluator(args.model_path, args.temperature, args.top_k, args.top_p, device)
 
+    evaluator = ModelEvaluator(model_path=args.model_path,
+                               temperature=args.temperature, top_k=args.top_k, top_p=args.top_p, fp16=args.fp16, fp16_opt_level=args.fp16_opt_level, device=device)
     if args.continuous_run:
       continuous_run(evaluator, args)
     if len(args.file) > 0:
