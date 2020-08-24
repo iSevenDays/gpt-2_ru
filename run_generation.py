@@ -133,8 +133,47 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
 
                 filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
                 next_tokens[isample] = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
+            sampled = next_tokens.unsqueeze(-1)
+            generated = torch.cat((generated, sampled), dim=1)
+            print(sampled.tolist())
+    return generated
 
-            generated = torch.cat((generated, next_tokens.unsqueeze(-1)), dim=1)
+def sample_sequence_until_token(model, length, context, stop_token: int, num_samples=1, temperature=1, top_k=0, top_p=0.0, 
+                    is_xlnet=False, device='cpu', max_input=1023, filter_single=[], filter_double=[]):
+    context = torch.tensor(context, dtype=torch.long, device=device)
+    context = context.unsqueeze(0).repeat(num_samples, 1)
+    generated = context
+    with torch.no_grad():
+        for _ in trange(length):
+
+            inputs = {'input_ids': generated[:,-max_input:]}
+            if is_xlnet: 
+                # XLNet is a direct (predict same token, not next token) and bi-directional model by default
+                # => need one additional dummy token in the input (will be masked), attention mask and target mapping (see model docstring)
+                input_ids = torch.cat((generated, torch.zeros((1, 1), dtype=torch.long, device=device)), dim=1)
+                perm_mask = torch.zeros((1, input_ids.shape[1], input_ids.shape[1]), dtype=torch.float, device=device)
+                perm_mask[:, :, -1] = 1.0  # Previous tokens don't see last token
+                target_mapping = torch.zeros((1, 1, input_ids.shape[1]), dtype=torch.float, device=device)
+                target_mapping[0, 0, -1] = 1.0  # predict last token
+                inputs = {'input_ids': input_ids, 'perm_mask': perm_mask, 'target_mapping': target_mapping}
+
+            outputs = model(**inputs)  # Note: we could also use 'past' with GPT-2/Transfo-XL/XLNet (cached hidden-states)
+            next_tokens = torch.zeros(num_samples, dtype=torch.long).to(device)
+            for isample in range(num_samples):
+                next_token_logits = outputs[0][isample, -1, :] / temperature
+
+                next_token_logits[filter_single] = FILTER_VALUE
+                # filter blank line = double \n
+                if generated[isample, -1] in filter_double:
+                    next_token_logits[generated[isample, -1]] = FILTER_VALUE
+
+                filtered_logits = top_k_top_p_filtering(next_token_logits, top_k=top_k, top_p=top_p)
+                next_tokens[isample] = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
+
+            sampled = next_tokens.unsqueeze(-1)
+            generated = torch.cat((generated, sampled), dim=1)
+            if sampled[0][0] == stop_token:
+                break
     return generated
 
 
