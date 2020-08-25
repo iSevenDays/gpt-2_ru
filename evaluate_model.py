@@ -68,8 +68,7 @@ class ModelEvaluator(object):
             filter_single=filter_single,
             filter_double=filter_n,
             num_samples=num_samples,
-            stop_token=stop_token,
-            tokenizer = self.tokenizer
+            stop_token=stop_token
         ).to('cpu')
 
     prompt = self.tokenizer.decode(context_tokens)
