@@ -2,7 +2,7 @@ import torch
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
-from run_generation import sample_sequence
+from run_generation import sample_sequence, sample_sequence_until_token
 from yt_encoder import YTEncoder
 from transformers import GPT2LMHeadModel
 import re
@@ -23,7 +23,6 @@ class ModelEvaluator(object):
   def __init__(self, model_path: str, temperature: int = 1.0, top_k: int = 0, top_p: int = 0.9, fp16: bool = False, fp16_opt_level: str = "O2", device: str = "cpu"):
     self.tokenizer = self._load_tokenizer(model_path)
     self.model = self._load_model(model_path, device)
-    print(fp16)
     if fp16:
         from apex import amp
         [self.model] = amp.initialize([self.model], opt_level=fp16_opt_level)
@@ -38,24 +37,39 @@ class ModelEvaluator(object):
   def tokenizer_decode(self, lst: list) -> str:
     return [self.tokenizer.decode(item) for item in lst]
 
-  def sample(self, prompt: str, length: int, num_samples: int = 1, allow_linebreak:bool = True):
+  def sample(self, prompt: str, length: int, num_samples: int = 1, allow_linebreak:bool = True, stop_token: int = -1):
     filter_n = self.tokenizer.encode('\n')[-1:]
     filter_single = [1] + self.tokenizer.encode('[')[-1:] + self.tokenizer.encode('(')[-1:]
     filter_single += [] if allow_linebreak else filter_n
 
     context_tokens = self.tokenizer.encode(prompt)
-    out = sample_sequence(
-        model=self.model,
-        context=context_tokens,
-        length=length,
-        temperature=self.temperature,
-        top_k=self.top_k,
-        top_p=self.top_p,
-        device=self.device,
-        filter_single=filter_single,
-        filter_double=filter_n,
-        num_samples=num_samples
-    ).to('cpu')
+    if stop_token == -1:
+        out = sample_sequence(
+            model=self.model,
+            context=context_tokens,
+            length=length,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
+            device=self.device,
+            filter_single=filter_single,
+            filter_double=filter_n,
+            num_samples=num_samples
+        ).to('cpu')
+    else:
+        out = sample_sequence_until_token(
+            model=self.model,
+            context=context_tokens,
+            length=length,
+            temperature=self.temperature,
+            top_k=self.top_k,
+            top_p=self.top_p,
+            device=self.device,
+            filter_single=filter_single,
+            filter_double=filter_n,
+            num_samples=num_samples,
+            stop_token=stop_token
+        ).to('cpu')
 
     prompt = self.tokenizer.decode(context_tokens)
     len_prompt = len(prompt)
@@ -75,8 +89,15 @@ def print_sample(samples):
 def continuous_run(evaluator: ModelEvaluator, args):
   while True:
     prompt = input("Prompt: ")
-    results = evaluator.sample(prompt, args.length, args.num_samples, True)
+    results = evaluator.sample(prompt, args.length, args.num_samples, True, stop_token=args.stop_token)
     print_sample(results)
+    if args.debug_print:
+        debug_print(evaluator.tokenizer, results[0])
+
+def debug_print(tokenizer, string: str):
+    encoded = tokenizer.encode(string)
+    decoded = [tokenizer.decode([token]) for token in encoded]
+    print(list(zip(encoded, decoded)))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -102,6 +123,8 @@ def main():
                         help="Wether use apex fp16 or not.")
     parser.add_argument('--fp16_opt_level', type=str, default="O2",
                         help="Apex fp16 optimization level")
+    parser.add_argument('--debug_print', action="store_true",
+                        help="Debug print sample")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
 
@@ -112,11 +135,15 @@ def main():
     if len(args.file) > 0:
       with open(args.file, "r") as handle:
         content = handle.read()
-      results = evaluator.sample(content, args.length, args.num_samples, True)
+      results = evaluator.sample(content, args.length, args.num_samples, True, stop_token=args.stop_token)
       print_sample(results)
+      if args.debug_print:
+          debug_print(evaluator.tokenizer, results[0])
     else:
-      results = evaluator.sample(args.prompt, args.length, args.num_samples, True)
+      results = evaluator.sample(args.prompt, args.length, args.num_samples, True, stop_token=args.stop_token)
       print_sample(results)
+      if args.debug_print:
+        debug_print(evaluator.tokenizer, results[0])
 
 if __name__ == "__main__":
   main()

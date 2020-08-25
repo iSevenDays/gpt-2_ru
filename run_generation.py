@@ -140,7 +140,6 @@ def sample_sequence(model, length, context, num_samples=1, temperature=1, top_k=
                 next_tokens[isample] = torch.multinomial(F.softmax(filtered_logits, dim=-1), num_samples=1)
             sampled = next_tokens.unsqueeze(-1)
             generated = torch.cat((generated, sampled), dim=1)
-            print(sampled.tolist())
     return generated
 
 def sample_sequence_until_token(model, length, context, stop_token: int, num_samples=1, temperature=1, top_k=0, top_p=0.0, 
@@ -180,7 +179,6 @@ def sample_sequence_until_token(model, length, context, stop_token: int, num_sam
             if sampled[0][0] == stop_token:
                 break
     return generated
-
 
 def main():
     parser = argparse.ArgumentParser()

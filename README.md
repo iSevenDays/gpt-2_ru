@@ -1,5 +1,15 @@
 # Russian GPT-2 
 
+# 0. What's new?
+
+There is new function "Sample until" which will sample sequence from GPT-2 until token(number).
+
+You can get this token from executing file to_token_convertor.
+
+There is new all in one class which will help you understand how to evaluate the model.
+
+Every file has argparser with --help, don't hesitate refering to this.
+
 # 1. I just want to play with your models
 
 You can try writing with the model here https://porfirevich.ru and with Telegram chat bot ```@PorfBot```
