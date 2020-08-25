@@ -13,8 +13,8 @@ class YTEncoder(PreTrainedTokenizer):
     def_name = 'encoder.model'
     def __init__(self, filename, *inputs, **kwargs):
         super().__init__(*inputs, **kwargs)
-        self.max_len_single_sentence = 1024 # no default special tokens - you can update this value if you add special tokens
-        self.max_len_sentences_pair = 1024 # no default special tokens - you can update this value if you add special tokens
+        #self.max_len_single_sentence = 1024 # no default special tokens - you can update this value if you add special tokens
+        #self.max_len_sentences_pair = 1024 # no default special tokens - you can update this value if you add special tokens
 
         if os.path.isdir(filename): filename = os.path.join(filename, self.def_name)
 

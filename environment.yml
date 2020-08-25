@@ -4,13 +4,15 @@ channels:
   - pytorch
   - conda-forge
   - defaults
+  - powerai
+  - roccqqck
 dependencies:
+  - jsonnet
   - ipykernel
   - python
   - pip
   - fastai
   - pytorch>=1.3
-  - cuda100 
   - regex
   - langdetect
   - tensorboardX
@@ -22,7 +24,6 @@ dependencies:
   - google-cloud-sdk
   - tar 
   - zstd
-  - transformers
   - pip:
     - pyTelegramBotAPI
     - pysocks
@@ -34,3 +35,4 @@ dependencies:
     - rupo
     - transitions
     - mezmorize
+    - transformers[torch]==2.10

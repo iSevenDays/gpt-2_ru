@@ -625,7 +625,7 @@ def main():
         i_end = 1
         need_grads = set(flat[:i_start+args.unfreeze_level*3]) | set(flat[-(i_end+args.unfreeze_level*3):])
         for item in flat:
-            requires_grad(item, item in need_grads)
+            requires_grad(item)
         print(200*'/')
         print(len([param for item in flatten_model(model) 
                 for param in item.parameters()
