@@ -132,3 +132,4 @@ poetry/oldpoet
 models/
 input.txt
 logs.log
+.idea/
