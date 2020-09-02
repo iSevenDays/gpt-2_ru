@@ -10,6 +10,10 @@ There is new all in one class which will help you understand how to evaluate the
 
 Every file has argparser with --help, don't hesitate refering to this.
 
+Google colab notebook for finetuning.
+
+https://colab.research.google.com/drive/1jwFks82BLyy8x3oxyKpiNdlL1PfKSQwW?usp=sharing
+
 # 1. I just want to play with your models
 
 You can try writing with the model here https://porfirevich.ru and with Telegram chat bot ```@PorfBot```
@@ -286,3 +290,11 @@ uvicorn rest:app --reload --host 0.0.0.0
 # @reboot /bin/bash -c "cd ru_transformers; git pull; source ~/.bashrc; conda activate gpt; DEVICE="cuda:1" uvicorn rest:app --reload --host 0.0.0.0"
 
 ```
+
+# 6. Additional scripts
+
+`evaluate_model.py` - to evaluate your model using input file or prompt.
+
+`text_processing.py` - to process your dataset.
+
+`to_token_convertor.py` - to convert your string to tokens. In case if you curious.

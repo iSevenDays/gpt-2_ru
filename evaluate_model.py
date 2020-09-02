@@ -2,7 +2,7 @@ import torch
 torch.backends.cudnn.enabled = True
 torch.backends.cudnn.benchmark = True
 
-from run_generation import sample_sequence, sample_sequence_until_token
+from run_generation import sample_sequence
 from yt_encoder import YTEncoder
 from transformers import GPT2LMHeadModel
 import re
@@ -37,39 +37,24 @@ class ModelEvaluator(object):
   def tokenizer_decode(self, lst: list) -> str:
     return [self.tokenizer.decode(item) for item in lst]
 
-  def sample(self, prompt: str, length: int, num_samples: int = 1, allow_linebreak:bool = True, stop_token: int = -1):
+  def sample(self, prompt: str, length: int, num_samples: int = 1, allow_linebreak:bool = True):
     filter_n = self.tokenizer.encode('\n')[-1:]
     filter_single = [1] + self.tokenizer.encode('[')[-1:] + self.tokenizer.encode('(')[-1:]
     filter_single += [] if allow_linebreak else filter_n
 
     context_tokens = self.tokenizer.encode(prompt)
-    if stop_token == -1:
-        out = sample_sequence(
-            model=self.model,
-            context=context_tokens,
-            length=length,
-            temperature=self.temperature,
-            top_k=self.top_k,
-            top_p=self.top_p,
-            device=self.device,
-            filter_single=filter_single,
-            filter_double=filter_n,
-            num_samples=num_samples
-        ).to('cpu')
-    else:
-        out = sample_sequence_until_token(
-            model=self.model,
-            context=context_tokens,
-            length=length,
-            temperature=self.temperature,
-            top_k=self.top_k,
-            top_p=self.top_p,
-            device=self.device,
-            filter_single=filter_single,
-            filter_double=filter_n,
-            num_samples=num_samples,
-            stop_token=stop_token
-        ).to('cpu')
+    out = sample_sequence(
+        model=self.model,
+        context=context_tokens,
+        length=length,
+        temperature=self.temperature,
+        top_k=self.top_k,
+        top_p=self.top_p,
+        device=self.device,
+        filter_single=filter_single,
+        filter_double=filter_n,
+        num_samples=num_samples
+    ).to('cpu')
 
     prompt = self.tokenizer.decode(context_tokens)
     len_prompt = len(prompt)
@@ -89,15 +74,8 @@ def print_sample(samples):
 def continuous_run(evaluator: ModelEvaluator, args):
   while True:
     prompt = input("Prompt: ")
-    results = evaluator.sample(prompt, args.length, args.num_samples, True, stop_token=args.stop_token)
+    results = evaluator.sample(prompt, args.length, args.num_samples, True)
     print_sample(results)
-    if args.debug_print:
-        debug_print(evaluator.tokenizer, results[0])
-
-def debug_print(tokenizer, string: str):
-    encoded = tokenizer.encode(string)
-    decoded = [tokenizer.decode([token]) for token in encoded]
-    print(list(zip(encoded, decoded)))
 
 def main():
     parser = argparse.ArgumentParser()
@@ -109,7 +87,7 @@ def main():
     parser.add_argument("--length", type=int, default=20)
     parser.add_argument("--num_samples", type=int, default=1,
                         help="Number of samples to generate.")
-    parser.add_argument("--temperature", type=float, default=1.0)
+    parser.add_argument("--temperature", type=float, default=0.8)
     parser.add_argument("--file", type=str, default="")
     parser.add_argument("--top_k", type=int, default=0)
     parser.add_argument("--top_p", type=float, default=0.9)
@@ -117,14 +95,10 @@ def main():
                         help="Avoid using CUDA when available")
     parser.add_argument('--seed', type=int, default=42,
                         help="random seed for initialization")
-    parser.add_argument('--stop_token', type=int, default=-1,
-                        help="Token on which model sampling stops.")
     parser.add_argument('--fp16', action="store_true",
                         help="Wether use apex fp16 or not.")
     parser.add_argument('--fp16_opt_level', type=str, default="O2",
                         help="Apex fp16 optimization level")
-    parser.add_argument('--debug_print', action="store_true",
-                        help="Debug print sample")
     args = parser.parse_args()
     device = "cuda" if torch.cuda.is_available() and not args.no_cuda else "cpu"
 
@@ -135,15 +109,11 @@ def main():
     if len(args.file) > 0:
       with open(args.file, "r") as handle:
         content = handle.read()
-      results = evaluator.sample(content, args.length, args.num_samples, True, stop_token=args.stop_token)
+      results = evaluator.sample(content, args.length, args.num_samples, True)
       print_sample(results)
-      if args.debug_print:
-          debug_print(evaluator.tokenizer, results[0])
     else:
-      results = evaluator.sample(args.prompt, args.length, args.num_samples, True, stop_token=args.stop_token)
+      results = evaluator.sample(args.prompt, args.length, args.num_samples, True)
       print_sample(results)
-      if args.debug_print:
-        debug_print(evaluator.tokenizer, results[0])
 
 if __name__ == "__main__":
   main()
